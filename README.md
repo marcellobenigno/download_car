@@ -95,6 +95,8 @@ Função principal do pipeline que realiza:
 - Download dos arquivos SICAR
 - Processamento dos dados
 - Exportação dos arquivos SQL
+- Remoção dos dados antidos no Banco
+- Inserção dos novos dados
 
 ### `process_shapefile(zip_file, output_path)`
 
@@ -112,7 +114,7 @@ Insere os dados do arquivo .sql gerado, removendo os antigos do banco usando `pg
 
 ```
 📥 Baixando dados para: (AC)
-Downloading polygon 'AREA_IMOVEL' for state 'AC': 100%|██████████| 14.4M/14.4M [00:01<00:00, 12.1MiB/s]
+Downloading polygon 'AREA_IMOVEL' for state 'AC': 100%|██████████| 14.4M/14.4M [00:02<00:00, 5.17MiB/s]
 Download executado com sucesso para: State.AC
 🛠 Processando shapefile para: AC
 🔄 Lendo o arquivo: temp/AC_AREA_IMOVEL.zip
@@ -124,6 +126,10 @@ Shapefile type: Polygon
 Postgis type: MULTIPOLYGON[2]
 Arquivo SQL gerado: /Users/marcellodebarrosfilho/code/download_car/sql/AC.sql ✅
 ✅ Processamento concluído com sucesso para AC!
+
+🛠 Inserindo no banco os dados do estado: AC
+ ️❌ Dados antigos removidos para o estado: AC. Registros removidos: 167565
+✅ Inserção concluída para o estado: AC
 ```
 
 ## Contribuição
