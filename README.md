@@ -98,6 +98,13 @@ Função principal do pipeline que realiza:
 - Remoção dos dados antidos no Banco
 - Inserção dos novos dados
 
+### `download_car(state)`
+
+Função para realização do download da base do CAR. Faz uso da biblioteca: 
+
+[https://github.com/urbanogilson/SICAR]([https://www.genome.gov/](https://github.com/urbanogilson/SICAR))
+
+
 ### `process_shapefile(zip_file, output_path)`
 
 Função para processamento do arquivo Shapefile, garantindo a limpeza dos dados.
