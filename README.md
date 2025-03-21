@@ -35,7 +35,7 @@ download_car
 
 Certifique-se de ter instalado:
 
-- Python 3.10+
+- Python >= 3.10.0
 - PostgreSQL com PostGIS
 - `shp2pgsql` instalado e configurado
 
