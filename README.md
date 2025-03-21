@@ -10,15 +10,16 @@ no bancos de dados PostgreSQL/PostGIS do **SIG-ITR**.
 ## Estrutura do Projeto
 
 ```
-project_root/
-│── download_car.py
-│── export_sql.py
-│── process_car.py
-│── __init__.py
-│── README.md
-│── requirements.txt
-│── .env-sample
-└── load_sql_data.py
+download_car
+├── LICENSE
+├── README.md
+├── __init__.py
+├── download_car.py
+├── env-sample
+├── export_sql.py
+├── load_sql_data.py
+├── process_car.py
+└── requirements.txt
 ```
 
 ## Funcionalidades
@@ -83,6 +84,7 @@ O script segue as seguintes etapas:
 3. **Download do Shapefile**.
 4. **Processamento e limpeza do Shapefile**.
 5. **Exportação dos dados para um arquivo SQL**.
+6. **Inserção dos dados no Banco SIG-ITR**
 
 ## Estrutura do Código
 
