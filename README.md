@@ -17,7 +17,8 @@ project_root/
 │── __init__.py
 │── README.md
 │── requirements.txt
-└── SICAR.py
+│── .env-sample
+└── load_sql_data.py
 ```
 
 ## Funcionalidades
