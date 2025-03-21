@@ -4,6 +4,7 @@ from SICAR import Sicar
 
 from download_car import download_car, create_directories
 from export_sql import export_sql
+from load_sql_data import load_sql_data
 from process_car import process_shapefile
 
 
@@ -37,6 +38,9 @@ def main():
             export_sql(shapefile_output, sql_output)
 
             print(f"✅ Processamento concluído com sucesso para {state_code}!\n")
+
+            print(f"🛠 Inserindo no banco os dados do estado: {state_code}")
+            load_sql_data(state_code)
 
         except Exception as e:
             print(f"❌ Erro ao processar {val} ({state_code}): {e}")

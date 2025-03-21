@@ -26,7 +26,7 @@ def export_sql(shapefile, output_sql):
         "-s", "4326",
         "-t", "2D",
         shapefile,
-        "maps_car"
+        "maps_car",
         ">",  # Redirecionando a saída
         output_sql
     ]

@@ -1,0 +1,5 @@
+DB_CONNECTION_URL=postgresql://postgres:postgres@localhost:5432/sigitr
+DB_PASSWORD=postgres
+DB_HOST=localhost
+DB_USER=postgres
+DB_NAME=sigitr
