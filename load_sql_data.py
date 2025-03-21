@@ -17,19 +17,19 @@ def load_sql_data(state):
     engine = create_engine(DATABASE_URL)
 
     # Removendo dados desatualizados
-    delete_sql = text(f"DELETE FROM maps_car WHERE cod_estado = '{state}'")
+    delete_sql = text(f"DELETE FROM maps_car WHERE cod_ibge_e = '{state}' AND cod_imovel LIKE '{state}-%'")
 
     try:
         with engine.connect() as connection:
-            result = connection.execute(delete_sql)
-            print(f"️❌ Dados antigos removidos para o estado: {state}. Registros removidos: {result.rowcount}")
+            connection.execute(delete_sql)
+            print(f"️❌ Dados antigos removidos para o estado: {state}")
     except Exception as e:
         logging.error(f"❌ Erro ao remover dados do estado {state}: {e}")
         return
 
     # Inserindo novos dados
     logging.info(f" Inserindo novos dados para o estado: {state}")
-    PASS = config("DB_PASSWORD")  # Senha do banco
+    PASS = config("DB_PASSWORD")
     HOST = config("DB_HOST")
     USER = config("DB_USER")
     DATABASE = config("DB_NAME")
