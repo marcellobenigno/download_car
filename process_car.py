@@ -47,32 +47,43 @@ COLUMN_RENAME = {
 }
 
 
-def process_shapefile(zip_file, output_file, output_crs=4326):
-    """Processa um shapefile, realizando limpeza, correção e conversão de dados."""
+def process_shapefile(zip_file, output_file, output_crs=4326, municipality_code=None):
     try:
-        # Carrega o arquivo shapefile e define o CRS
         print(f"🔄 Lendo o arquivo: {zip_file}")
-        car = gpd.read_file(f"zip://{zip_file}")
+        car = gpd.read_file(zip_file)
+
+        if car.empty:
+            raise ValueError("O shapefile está vazio.")
+
         car = car.to_crs(output_crs)
 
-        # Seleciona e renomeia as colunas
-        valid_columns = [col for col in COLUMN_RENAME.keys() if col in car.columns]
+        # Verifica colunas
+        missing_cols = [col for col in COLUMN_RENAME if col not in car.columns]
+        if missing_cols:
+            print(f"⚠️ Atenção: colunas ausentes: {', '.join(missing_cols)}")
+
+        valid_columns = [col for col in COLUMN_RENAME if col in car.columns]
         car = car[valid_columns].rename(columns=COLUMN_RENAME)
 
         # Extrai códigos IBGE
         car["cod_ibge_m"] = car["cod_imovel"].apply(extract_cod_ibge_m)
         car["cod_ibge_e"] = car["cod_ibge_m"].apply(extract_cod_ibge_e)
 
-        # Limpeza e correção de geometrias
+        # Corrige geometrias
         car["geom"] = car["geom"].apply(clean_geometry)
         car["geom"] = car["geom"].apply(ensure_polygon)
+        car = car[car["geom"].notnull()]
 
-        # Remove duplicatas
+        if municipality_code:
+            car = car[car["cod_ibge_m"] == municipality_code]
+            print(f"Filtro aplicado para o município: {municipality_code}")
+
         car = car.drop_duplicates(subset=["cod_imovel"], keep="first")
 
-        # Salva o arquivo modificado
         print(f"💾 Salvando Shapefile em: {output_file}")
         car.to_file(output_file, driver="ESRI Shapefile")
+
+        print(f"✅ Processamento concluído com sucesso para {output_file}!")
 
     except Exception as e:
         print(f"❌ Erro ao processar o shapefile: {e}")

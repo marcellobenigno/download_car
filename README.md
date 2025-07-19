@@ -24,8 +24,9 @@ download_car
 
 ## Funcionalidades
 
-- Download automático de arquivos SICAR.
+- Download automático de arquivos SICAR por estado ou município.
 - Processamento e limpeza de arquivos Shapefile.
+- Filtragem de dados por código de município.
 - Conversão para SQL com suporte ao PostgreSQL/PostGIS.
 - Organização automática dos arquivos processados.
 
@@ -45,6 +46,7 @@ Instale as dependências do projeto com:
 
 ```sh
 pip install -r requirements.txt
+pip install git+https://github.com/urbanogilson/SICAR
 ```
 
 ## Instalação e Uso
@@ -57,6 +59,7 @@ pip install -r requirements.txt
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install git+https://github.com/urbanogilson/SICAR
 ```
 
 * Renomeie o arquivo `env-sample` para `.env`:
@@ -67,7 +70,51 @@ mv env-sample .env
 
 Altere este arquivo, com as credenciais do Banco de Dados
 
-### Executando o Script Principal
+## Como Usar
+
+### Download por Estado
+
+Para baixar dados de um estado específico, execute:
+
+```sh
+python download_car.py
+```
+
+O script irá solicitar:
+
+1. **Sigla do estado** (ex: AC, SP, RJ)
+2. **Código do município** (opcional)
+
+Exemplo de execução:
+
+```
+Digite a sigla do estado (ex: AC, SP): AC
+Digite o código do município (opcional, ex: 1200708): 
+```
+
+### Download por Município
+
+Para baixar dados de um município específico, execute o mesmo comando e forneça o código do município:
+
+```sh
+python download_car.py
+```
+
+Exemplo de execução:
+
+```
+Digite a sigla do estado (ex: AC, SP): AC
+Digite o código do município (opcional, ex: 1200708): 1200708
+```
+
+### Como obter o código do município
+
+O código do município pode ser extraído do `cod_imovel` do CAR. Por exemplo:
+
+- `cod_imovel`: AC-1200708-B71B52CEE3BB4E4E8AB40CDB6195DDC8
+- `código do município`: 1200708
+
+### Executando o Script Principal (Pipeline Completo)
 
 Para rodar o pipeline completo de download, processamento e exportação:
 
@@ -80,11 +127,12 @@ python __init__.py
 O script segue as seguintes etapas:
 
 1. **Criação dos diretórios**: `sql/` e `shapefile/`.
-2. **Obtenção das datas de liberação dos dados**.
-3. **Download do Shapefile**.
+2. **Solicitação do estado e município** (via prompt).
+3. **Download do Shapefile** para o estado especificado.
 4. **Processamento e limpeza do Shapefile**.
-5. **Exportação dos dados para um arquivo SQL**.
-6. **Inserção dos dados no Banco SIG-ITR**
+5. **Filtragem por município** (se código fornecido).
+6. **Exportação dos dados para um arquivo SQL**.
+7. **Inserção dos dados no Banco SIG-ITR**
 
 ## Estrutura do Código
 
@@ -100,14 +148,14 @@ Função principal do pipeline que realiza:
 
 ### `download_car(state)`
 
-Função para realização do download da base do CAR. Faz uso da biblioteca: 
+Função para realização do download da base do CAR. Faz uso da biblioteca:
 
 [https://github.com/urbanogilson/SICAR](https://github.com/urbanogilson/SICAR)
 
-
-### `process_shapefile(zip_file, output_path)`
+### `process_shapefile(zip_file, output_path, municipality_code=None)`
 
 Função para processamento do arquivo Shapefile, garantindo a limpeza dos dados.
+Agora suporta filtragem por código de município através do parâmetro `municipality_code`.
 
 ### `export_sql(shapefile, output_sql)`
 
@@ -119,24 +167,33 @@ Insere os dados do arquivo .sql gerado, removendo os antigos do banco usando `pg
 
 ## Exemplo de Saída
 
+### Download por Estado
+
 ```
+Digite a sigla do estado (ex: AC, SP): AC
+Digite o código do município (opcional, ex: 1200708): 
 📥 Baixando dados para: (AC)
 Downloading polygon 'AREA_IMOVEL' for state 'AC': 100%|██████████| 14.4M/14.4M [00:02<00:00, 5.17MiB/s]
 Download executado com sucesso para: State.AC
 🛠 Processando shapefile para: AC
 🔄 Lendo o arquivo: temp/AC_AREA_IMOVEL.zip
-💾 Salvando Shapefile em: /Users/marcellodebarrosfilho/code/download_car/shapefile/AC.shp
-📤 Exportando para SQL: AC
-Field num_area is an FTDouble with width 24 and precision 15
-Field num_modulo is an FTDouble with width 24 and precision 15
-Shapefile type: Polygon
-Postgis type: MULTIPOLYGON[2]
-Arquivo SQL gerado: /Users/marcellodebarrosfilho/code/download_car/sql/AC.sql ✅
+💾 Salvando Shapefile em: /home/user/data/shapefile/AC.shp
 ✅ Processamento concluído com sucesso para AC!
+```
 
-🛠 Inserindo no banco os dados do estado: AC
- ️❌ Dados antigos removidos para o estado: AC. Registros removidos: 167565
-✅ Inserção concluída para o estado: AC
+### Download por Município
+
+```
+Digite a sigla do estado (ex: AC, SP): AC
+Digite o código do município (opcional, ex: 1200708): 1200708
+📥 Baixando dados para: (AC)
+Downloading polygon 'AREA_IMOVEL' for state 'AC': 100%|██████████| 14.4M/14.4M [00:02<00:00, 5.17MiB/s]
+Download executado com sucesso para: State.AC
+🛠 Processando shapefile para: AC
+🔄 Lendo o arquivo: temp/AC_AREA_IMOVEL.zip
+Filtro aplicado para o município: 1200708
+💾 Salvando Shapefile em: /home/user/data/shapefile/AC.shp
+✅ Processamento concluído com sucesso para AC!
 ```
 
 ## Contribuição
@@ -146,4 +203,3 @@ Sinta-se à vontade para abrir issues e enviar pull requests!
 ## Licença
 
 Este projeto está sob a licença MIT.
-

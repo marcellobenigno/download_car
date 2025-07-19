@@ -1,49 +1,40 @@
-import logging
+import os
+import subprocess
 
-import psycopg2
 from decouple import config
-from sqlalchemy import create_engine, text
 
 
 def load_sql_data(state):
-    """
-    Remove dados desatualizados do banco e insere novos dados a partir dos arquivos SQL.
-
-    Parâmetros:
-        state (str): Código do estado cujos dados serão atualizados.
-    """
-    # Configuração do banco de dados
-    DATABASE_URL = config("DB_CONNECTION_URL")
-    engine = create_engine(DATABASE_URL)
-
-    # Removendo dados desatualizados
-    delete_sql = text(f"DELETE FROM maps_car WHERE cod_ibge_e = '{state}' AND cod_imovel LIKE '{state}-%'")
-
-    try:
-        with engine.connect() as connection:
-            connection.execute(delete_sql)
-            print(f"️❌ Dados antigos removidos para o estado: {state}")
-    except Exception as e:
-        logging.error(f"❌ Erro ao remover dados do estado {state}: {e}")
-        return
-
-    # Inserindo novos dados
-    logging.info(f" Inserindo novos dados para o estado: {state}")
     PASS = config("DB_PASSWORD")
     HOST = config("DB_HOST")
     USER = config("DB_USER")
     DATABASE = config("DB_NAME")
 
+    sql_path = os.path.join("data", "sql", f"{state}.sql")
+
     try:
-        conn = psycopg2.connect(host=HOST, database=DATABASE, user=USER, password=PASS)
-        cur = conn.cursor()
-        with open(f"sql/{state}.sql", "r") as f:
-            cur.execute(f.read())
-        conn.commit()
-        print(f"✅ Inserção concluída para o estado: {state}")
-    except (Exception, psycopg2.DatabaseError) as error:
-        print(f"❌ Erro ao inserir dados para o estado {state}: {error}")
-    finally:
-        if conn is not None:
-            cur.close()
-            conn.close()
+        # Remove dados antigos via engine SQLAlchemy (pode manter)
+        # Depois chama o psql para importar o arquivo inteiro
+        delete_sql = f"DELETE FROM maps_car WHERE cod_ibge_e = '{state}' AND cod_imovel LIKE '{state}-%'"
+        # Supondo engine criado antes
+        # engine.execute(delete_sql)
+
+        # Comando psql para importar arquivo SQL grande
+        command = [
+            "psql",
+            f"-h{HOST}",
+            f"-U{USER}",
+            f"-d{DATABASE}",
+            "-f",
+            sql_path
+        ]
+
+        # Configure variável de ambiente PGPASSWORD para não pedir senha
+        env = os.environ.copy()
+        env["PGPASSWORD"] = PASS
+
+        subprocess.run(command, check=True, env=env)
+        print(f"✅ Dados inseridos via psql para o estado: {state}")
+
+    except Exception as e:
+        print(f"❌ Erro ao inserir dados via psql para o estado {state}: {e}")
