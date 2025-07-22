@@ -13,7 +13,8 @@ no bancos de dados PostgreSQL/PostGIS do **SIG-ITR**.
 download_car
 ├── LICENSE
 ├── README.md
-├── __init__.py
+├── init.py
+├── main.py # Ponto de entrada principal do pipeline
 ├── download_car.py
 ├── env-sample
 ├── export_sql.py
@@ -24,11 +25,29 @@ download_car
 
 ## Funcionalidades
 
-- Download automático de arquivos SICAR por estado ou município.
+- Download automático de arquivos SICAR por estado.
 - Processamento e limpeza de arquivos Shapefile.
-- Filtragem de dados por código de município.
+- Filtragem de dados por código de município (aplicado durante o processamento).
 - Conversão para SQL com suporte ao PostgreSQL/PostGIS.
 - Organização automática dos arquivos processados.
+
+## Instalação
+
+### Pré-requisitos
+
+Certifique-se de ter instalado:
+
+- Python >= 3.10.0
+- PostgreSQL com PostGIS
+- `shp2pgsql` instalado e configurado (geralmente vem com o PostGIS)
+- `pgsql` instalado e configurado
+
+### Dependências
+
+Instale as dependências do projeto com:
+
+```sh
+pip install -r requirements.txt
 
 ## Instalação
 
