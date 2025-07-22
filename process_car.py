@@ -21,16 +21,17 @@ def clean_geometry(geom):
     """Limpa e simplifica a geometria."""
     if geom.is_empty or not geom.is_valid:
         return None  # Remove geometrias inválidas
-    return geom.simplify(0.00001)  # Suaviza a geometria
+    return geom.simplify(0.00001).buffer(0)
 
 
 def ensure_polygon(geom):
-    """Garante que a geometria seja um polígono ou multipolígono."""
+    if geom is None:
+        return None
     if geom.geom_type == "LineString":
-        return Polygon(geom)  # Converte LineString para Polygon
+        return Polygon(geom)
     elif geom.geom_type == "MultiLineString":
-        return MultiPolygon([Polygon(line) for line in geom.geoms])  # MultiLineString -> MultiPolygon
-    return geom  # Mantém Polygon e MultiPolygon inalterados
+        return MultiPolygon([Polygon(line) for line in geom.geoms if line.is_valid])
+    return geom
 
 
 # Mapeamento de nomes de colunas
@@ -47,7 +48,7 @@ COLUMN_RENAME = {
 }
 
 
-def process_shapefile(zip_file, output_file, output_crs=4326, municipality_code=None):
+def process_shapefile(zip_file, output_file, output_crs=4326):
     try:
         print(f"🔄 Lendo o arquivo: {zip_file}")
         car = gpd.read_file(zip_file)
@@ -73,11 +74,6 @@ def process_shapefile(zip_file, output_file, output_crs=4326, municipality_code=
         car["geom"] = car["geom"].apply(clean_geometry)
         car["geom"] = car["geom"].apply(ensure_polygon)
         car = car[car["geom"].notnull()]
-
-        if municipality_code:
-            car = car[car["cod_ibge_m"] == municipality_code]
-            print(f"Filtro aplicado para o município: {municipality_code}")
-
         car = car.drop_duplicates(subset=["cod_imovel"], keep="first")
 
         print(f"💾 Salvando Shapefile em: {output_file}")

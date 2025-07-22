@@ -2,27 +2,13 @@ import subprocess
 
 
 def export_sql(shapefile, output_sql):
-    """
-    Converte um arquivo Shapefile para um script SQL usando shp2pgsql.
-
-    Parâmetros:
-        shapefile (str): Caminho do arquivo Shapefile de entrada (.shp).
-        output_sql (str): Caminho do arquivo SQL de saída (.sql).
-
-    Requisitos:
-        - O utilitário `shp2pgsql` deve estar instalado e acessível no PATH.
-        - A extensão PostGIS já deve estar ativada no banco de dados.
-
-    Exemplo de uso:
-        export_sql("data/area_imovel.shp", "sql/area_imovel.sql")
-    """
     command = [
         "shp2pgsql",
-        "-a",  # Append mode (ou use -c para create table)
-        "-s", "4326",  # SRID
-        "-t", "2D",  # Tipo de geometria 2D
+        "-a",
+        "-s", "4326",
+        "-t", "2D",
         shapefile,
-        "maps_car"  # Nome da tabela destino no banco
+        "maps_car"
     ]
 
     try:
