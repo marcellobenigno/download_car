@@ -1,224 +1,212 @@
 # Download CAR
 
-## Descrição
+## Descrição do Projeto
 
-Este projeto automatiza o download, processamento e exportação de dados do **SICAR**
-(Sistema Nacional de Cadastro Ambiental Rural). Ele baixa arquivos no formato Shapefile,
-realiza limpeza e conversão dos dados e os exporta em formato SQL para posterior inserção
-no bancos de dados PostgreSQL/PostGIS do **SIG-ITR**.
+Este projeto Python foi desenvolvido para automatizar o processo de download, processamento e exportação de dados do
+Sistema Nacional de Cadastro Ambiental Rural (SICAR). Ele é capaz de baixar arquivos Shapefile por estado, realizar a
+limpeza e conversão dos dados geográficos e atributos, e exportá-los em formato SQL otimizado para inserção em bancos de
+dados PostgreSQL/PostGIS, especificamente para o Sistema de Informações Geográficas do Imposto Territorial Rural (
+SIG-ITR).
 
 ## Estrutura do Projeto
 
 ```
-download_car
+. (raiz do projeto)
 ├── LICENSE
 ├── README.md
-├── init.py
-├── main.py # Ponto de entrada principal do pipeline
-├── download_car.py
-├── env-sample
-├── export_sql.py
-├── load_sql_data.py
-├── process_car.py
-└── requirements.txt
+├── main.py                 # Ponto de entrada principal do pipeline
+├── download_car.py         # Lógica para download de dados do SICAR
+├── export_sql.py           # Lógica para exportar Shapefiles para SQL
+├── load_sql_data.py        # Lógica para carregar dados SQL no PostgreSQL/PostGIS
+├── process_car.py          # Lógica para processamento e limpeza de Shapefiles
+├── requirements.txt        # Dependências do Python
+├── .env-sample             # Exemplo de arquivo de variáveis de ambiente
+└── temp/
+    ├── sql/                # Diretório para arquivos SQL gerados
+    ├── shapefile/          # Diretório para Shapefiles processados
+    └── zip/                # Diretório para arquivos ZIP baixados
 ```
 
-## Funcionalidades
+## Funcionalidades Principais
 
-- Download automático de arquivos SICAR por estado.
-- Processamento e limpeza de arquivos Shapefile.
-- Filtragem de dados por código de município (aplicado durante o processamento).
-- Conversão para SQL com suporte ao PostgreSQL/PostGIS.
-- Organização automática dos arquivos processados.
+- **Download Automatizado**: Baixa arquivos SICAR (Shapefiles) por estado, utilizando a biblioteca `SICAR`.
+- **Processamento de Shapefiles**: Realiza a limpeza e padronização de dados geográficos e atributos, incluindo a
+  correção de geometrias inválidas e a extração de códigos IBGE.
+- **Filtragem de Dados**: Suporta filtragem opcional por código de município durante o processamento.
+- **Exportação para SQL**: Converte os Shapefiles processados para o formato SQL, utilizando `shp2pgsql`, com suporte a
+  PostgreSQL/PostGIS.
+- **Gerenciamento de Banco de Dados**: Insere os dados SQL no banco de dados de destino, com funcionalidade para remover
+  registros antigos antes da inserção de novos dados, garantindo a atualização contínua.
+- **Estrutura Modular**: Código organizado em módulos para facilitar a manutenção e escalabilidade.
 
-## Instalação
+## Instalação e Configuração
 
 ### Pré-requisitos
 
-Certifique-se de ter instalado:
+Certifique-se de ter os seguintes softwares instalados e configurados em seu ambiente:
 
-- Python >= 3.10.0
-- PostgreSQL com PostGIS
-- `shp2pgsql` instalado e configurado (geralmente vem com o PostGIS)
-- `pgsql` instalado e configurado
+- **Python**: Versão 3.10.0 ou superior.
+- **PostgreSQL com PostGIS**: Um servidor PostgreSQL com a extensão PostGIS instalada e configurada para lidar com dados
+  geoespaciais.
+- **`shp2pgsql`**: Ferramenta de linha de comando que geralmente acompanha a instalação do PostGIS, utilizada para
+  converter Shapefiles em comandos SQL para PostgreSQL.
+- **`psql`**: Cliente de linha de comando do PostgreSQL, utilizado para interagir com o banco de dados.
 
-### Dependências
+### Configuração do Ambiente
 
-Instale as dependências do projeto com:
+1. **Clone o Repositório** (se aplicável):
+   ```bash
+   git clone <URL_DO_REPOSITORIO>
+   cd download_car
+   ```
 
-```sh
-pip install -r requirements.txt
+2. **Crie e Ative um Ambiente Virtual**:
+   É altamente recomendável usar um ambiente virtual para gerenciar as dependências do projeto.
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # No Linux/macOS
+   # .venv\Scripts\activate   # No Windows (CMD)
+   # .venv\Scripts\Activate.ps1 # No Windows (PowerShell)
+   ```
 
-## Instalação
+3. **Instale as Dependências Python**:
+   Instale todas as bibliotecas Python necessárias listadas no arquivo `requirements.txt`.
+   ```bash
+   pip install -r requirements.txt
+   ```
+   Além disso, este projeto utiliza uma biblioteca específica do SICAR que pode precisar ser instalada diretamente do
+   GitHub:
+   ```bash
+   pip install git+https://github.com/urbanogilson/SICAR
+   ```
 
-### Pré-requisitos
-
-Certifique-se de ter instalado:
-
-- Python >= 3.10.0
-- PostgreSQL com PostGIS
-- `shp2pgsql` instalado e configurado
-
-### Dependências
-
-Instale as dependências do projeto com:
-
-```sh
-pip install -r requirements.txt
-pip install git+https://github.com/urbanogilson/SICAR
-```
-
-## Instalação e Uso
-
-* Crie um virtualenv com Python > 3.10.0;
-* Ative o virtualenv;
-* Instale as dependências do ambiente de desenvolvimento;
-
-```
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pip install git+https://github.com/urbanogilson/SICAR
-```
-
-* Renomeie o arquivo `env-sample` para `.env`:
-
-```
-mv env-sample .env
-```
-
-Altere este arquivo, com as credenciais do Banco de Dados
+4. **Configure as Variáveis de Ambiente**:
+   Renomeie o arquivo `.env-sample` para `.env` e preencha as credenciais do seu banco de dados.
+   ```bash
+   mv .env-sample .env
+   ```
+   Edite o arquivo `.env` com as seguintes informações:
+   ```ini
+   DB_HOST=seu_host_do_banco
+   DB_USER=seu_usuario_do_banco
+   DB_NAME=seu_nome_do_banco
+   DB_PASSWORD=sua_senha_do_banco
+   ```
+   Certifique-se de que o usuário do banco de dados tem permissões adequadas para criar tabelas e inserir/deletar dados
+   na base de dados especificada.
 
 ## Como Usar
 
-### Download por Estado
+O projeto pode ser executado de duas formas principais: interativamente ou via linha de comando, permitindo o download e
+processamento de dados para um ou múltiplos estados.
 
-Para baixar dados de um estado específico, execute:
+### Execução Interativa (para um ou múltiplos estados)
 
-```sh
-python download_car.py
+Para iniciar o pipeline completo de download, processamento e exportação de forma interativa, execute o
+script `main.py`:
+
+```bash
+python main.py
 ```
 
-O script irá solicitar:
-
-1. **Sigla do estado** (ex: AC, SP, RJ)
-2. **Código do município** (opcional)
-
-Exemplo de execução:
+O script solicitará que você digite as siglas dos estados desejados, separadas por vírgula (ex: `AC, SP, MG`).
 
 ```
-Digite a sigla do estado (ex: AC, SP): AC
-Digite o código do município (opcional, ex: 1200708): 
+Digite a sigla dos estados separados por vírgula (ex: AC, SP, MG): AC, SP
 ```
 
-### Download por Município
+### Execução via Linha de Comando (para um ou múltiplos estados)
 
-Para baixar dados de um município específico, execute o mesmo comando e forneça o código do município:
+Você pode passar as siglas dos estados diretamente como um argumento para o script `main.py`:
 
-```sh
-python download_car.py
+```bash
+python main.py AC,SP,RJ
 ```
 
-Exemplo de execução:
+Neste exemplo, o script processará os dados para os estados do Acre (AC), São Paulo (SP) e Rio de Janeiro (RJ)
+sequencialmente.
+
+### Fluxo de Execução do Pipeline
+
+Ao executar `main.py`, o script seguirá as seguintes etapas para cada estado especificado:
+
+1. **Criação de Diretórios**: Garante que os diretórios `temp/sql/`, `temp/shapefile/` e `temp/zip/` existam para
+   armazenar os arquivos intermediários.
+2. **Download do Shapefile**: Baixa o arquivo ZIP do SICAR para o estado atual, salvando-o em `temp/zip/`.
+3. **Descompactação**: O arquivo ZIP é descompactado em um diretório temporário dentro de `temp/unzipped/`.
+4. **Processamento do Shapefile**: O arquivo `.shp` descompactado é lido, limpo (geometrias inválidas são corrigidas,
+   colunas são padronizadas) e salvo em `temp/shapefile/`.
+5. **Exportação para SQL**: O Shapefile processado é convertido para um arquivo `.sql` usando `shp2pgsql`, que é salvo
+   em `temp/sql/`.
+6. **Carregamento no Banco de Dados**: Os dados do arquivo `.sql` são carregados no banco de dados PostgreSQL/PostGIS.
+   Antes da inserção, os registros antigos correspondentes ao estado são removidos para evitar duplicidade e garantir a
+   atualização dos dados.
+
+## Estrutura do Código e Módulos
+
+O projeto é modularizado para facilitar a compreensão e manutenção:
+
+- `main.py`: O script principal que orquestra o fluxo de trabalho, chamando as funções dos outros módulos em sequência.
+- `download_car.py`: Contém funções para criar a estrutura de diretórios necessária e realizar o download dos Shapefiles
+  do SICAR. Utiliza a biblioteca `SICAR` para interagir com a API do SICAR.
+    - `create_directories(base_path)`: Cria os diretórios `sql`, `shapefile` e `zip`.
+    - `get_dated_filename(state, temp_path)`: Gera um nome de arquivo único com base na data para o ZIP baixado.
+    - `download_car(state, dated_zip_path)`: Realiza o download do Shapefile para o estado especificado.
+- `process_car.py`: Responsável pelo processamento e limpeza dos dados do Shapefile.
+    - `extract_cod_ibge_m(cod_imovel)`: Extrai o código IBGE do município.
+    - `extract_cod_ibge_e(cod_ibge_m)`: Extrai o código IBGE do estado.
+    - `clean_geometry(geom)`: Limpa e valida geometrias.
+    - `ensure_polygon(geom)`: Garante que a geometria seja um polígono.
+    - `process_shapefile(zip_file, output_file, output_crs=4326)`: Função principal de processamento, lendo, limpando e
+      salvando o Shapefile.
+- `export_sql.py`: Lida com a conversão do Shapefile processado para um arquivo SQL.
+    - `export_sql(shapefile, output_sql)`: Executa o comando `shp2pgsql` para gerar o arquivo SQL.
+- `load_sql_data.py`: Gerencia a inserção dos dados SQL no banco de dados PostgreSQL/PostGIS.
+    - `load_sql_data(state, sql_path)`: Conecta-se ao banco de dados e executa comandos `DELETE` (para registros
+      antigos) e `INSERT` (para novos dados) usando `psql`.
+
+## Exemplos de Saída
+
+### Execução para Múltiplos Estados
 
 ```
-Digite a sigla do estado (ex: AC, SP): AC
-Digite o código do município (opcional, ex: 1200708): 1200708
-```
+Digite a sigla dos estados separados por vírgula (ex: AC, SP, MG): AC, SP
 
-### Como obter o código do município
+>>> Processando estado: AC
+✅ Arquivo já existe: temp/zip/AC_AREA_IMOVEL_22072025.zip
+Arquivo baixado e salvo em: temp/zip/AC_AREA_IMOVEL_22072025.zip
+Arquivo descompactado em: temp/unzipped/AC
+🔄 Lendo o arquivo: temp/unzipped/AC/CAR_AC.shp
+💾 Salvando Shapefile em: temp/shapefile/AC.shp
+✅ Processamento concluído com sucesso para temp/shapefile/AC.shp!
+✅ Arquivo SQL gerado com sucesso: temp/sql/AC.sql
+Executando DELETE para o estado AC...
+✅ Registros antigos de AC excluídos com sucesso (ou nenhum encontrado para a condição).
+Inserindo dados via psql para o estado: AC a partir de temp/sql/AC.sql
+✅ Dados inseridos via psql para o estado: AC
 
-O código do município pode ser extraído do `cod_imovel` do CAR. Por exemplo:
-
-- `cod_imovel`: AC-1200708-B71B52CEE3BB4E4E8AB40CDB6195DDC8
-- `código do município`: 1200708
-
-### Executando o Script Principal (Pipeline Completo)
-
-Para rodar o pipeline completo de download, processamento e exportação:
-
-```sh
-python __init__.py
-```
-
-## Configuração e Execução
-
-O script segue as seguintes etapas:
-
-1. **Criação dos diretórios**: `sql/` e `shapefile/`.
-2. **Solicitação do estado e município** (via prompt).
-3. **Download do Shapefile** para o estado especificado.
-4. **Processamento e limpeza do Shapefile**.
-5. **Filtragem por município** (se código fornecido).
-6. **Exportação dos dados para um arquivo SQL**.
-7. **Inserção dos dados no Banco SIG-ITR**
-
-## Estrutura do Código
-
-### `main()`
-
-Função principal do pipeline que realiza:
-
-- Download dos arquivos SICAR
-- Processamento dos dados
-- Exportação dos arquivos SQL
-- Remoção dos dados antidos no Banco
-- Inserção dos novos dados
-
-### `download_car(state)`
-
-Função para realização do download da base do CAR. Faz uso da biblioteca:
-
-[https://github.com/urbanogilson/SICAR](https://github.com/urbanogilson/SICAR)
-
-### `process_shapefile(zip_file, output_path, municipality_code=None)`
-
-Função para processamento do arquivo Shapefile, garantindo a limpeza dos dados.
-Agora suporta filtragem por código de município através do parâmetro `municipality_code`.
-
-### `export_sql(shapefile, output_sql)`
-
-Converte o Shapefile para um script SQL usando `shp2pgsql`.
-
-### `load_sql_data(state)`
-
-Insere os dados do arquivo .sql gerado, removendo os antigos do banco usando `pgsql`.
-
-## Exemplo de Saída
-
-### Download por Estado
-
-```
-Digite a sigla do estado (ex: AC, SP): AC
-Digite o código do município (opcional, ex: 1200708): 
-📥 Baixando dados para: (AC)
-Downloading polygon 'AREA_IMOVEL' for state 'AC': 100%|██████████| 14.4M/14.4M [00:02<00:00, 5.17MiB/s]
-Download executado com sucesso para: State.AC
-🛠 Processando shapefile para: AC
-🔄 Lendo o arquivo: temp/AC_AREA_IMOVEL.zip
-💾 Salvando Shapefile em: /home/user/data/shapefile/AC.shp
-✅ Processamento concluído com sucesso para AC!
-```
-
-### Download por Município
-
-```
-Digite a sigla do estado (ex: AC, SP): AC
-Digite o código do município (opcional, ex: 1200708): 1200708
-📥 Baixando dados para: (AC)
-Downloading polygon 'AREA_IMOVEL' for state 'AC': 100%|██████████| 14.4M/14.4M [00:02<00:00, 5.17MiB/s]
-Download executado com sucesso para: State.AC
-🛠 Processando shapefile para: AC
-🔄 Lendo o arquivo: temp/AC_AREA_IMOVEL.zip
-Filtro aplicado para o município: 1200708
-💾 Salvando Shapefile em: /home/user/data/shapefile/AC.shp
-✅ Processamento concluído com sucesso para AC!
+>>> Processando estado: SP
+📥 Baixando dados para: SP
+Downloading polygon 'AREA_IMOVEL' for state 'SP': 100%|██████████| 14.4M/14.4M [00:02<00:00, 5.17MiB/s]
+⬇️ Download executado e renomeado para: temp/zip/SP_AREA_IMOVEL_22072025.zip
+Arquivo baixado e salvo em: temp/zip/SP_AREA_IMOVEL_22072025.zip
+Arquivo descompactado em: temp/unzipped/SP
+🔄 Lendo o arquivo: temp/unzipped/SP/CAR_SP.shp
+💾 Salvando Shapefile em: temp/shapefile/SP.shp
+✅ Processamento concluído com sucesso para temp/shapefile/SP.shp!
+✅ Arquivo SQL gerado com sucesso: temp/sql/SP.sql
+Executando DELETE para o estado SP...
+✅ Registros antigos de SP excluídos com sucesso (ou nenhum encontrado para a condição).
+Inserindo dados via psql para o estado: SP a partir de temp/sql/SP.sql
+✅ Dados inseridos via psql para o estado: SP
 ```
 
 ## Contribuição
 
-Sinta-se à vontade para abrir issues e enviar pull requests!
+Contribuições são bem-vindas! Sinta-se à vontade para abrir *issues* para relatar bugs ou sugerir melhorias, e enviar
+*pull requests* com novas funcionalidades ou correções.
 
 ## Licença
 
-Este projeto está sob a licença MIT.
+Este projeto está licenciado sob a Licença MIT. Consulte o arquivo `LICENSE` para mais detalhes.
+
