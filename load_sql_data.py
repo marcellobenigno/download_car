@@ -15,7 +15,7 @@ def load_sql_data(state, sql_path):
         env['PGPASSWORD'] = DB_PASSWORD
 
         # Comando DELETE
-        sql_query = f"DELETE FROM maps_car WHERE cod_estado = '{state}' AND cod_imovel LIKE '{state}-%'"
+        sql_query = f"DELETE FROM maps_car WHERE cod_estado = '{state.upper()}' OR cod_imovel LIKE '{state.upper()}-%'"
         delete_command = [
             'psql',
             '-h', HOST,
