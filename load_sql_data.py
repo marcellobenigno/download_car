@@ -24,9 +24,9 @@ def load_sql_data(state, sql_path):
             '-c', sql_query
         ]
         # Passa o dicionário 'env' para o subprocess.run()
-        print(f"Executando DELETE para o estado {state}...")
+        print(f"Executando DELETE para o estado {state.upper()}...")
         subprocess.run(delete_command, check=True, env=env)
-        print(f"✅ Registros antigos de {state} excluídos com sucesso (ou nenhum encontrado para a condição).")
+        print(f"✅ Registros antigos de {state.upper()} excluídos com sucesso (ou nenhum encontrado para a condição).")
 
         # Comando de inserção (LOAD)
         command = [
