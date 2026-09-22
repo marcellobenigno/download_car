@@ -39,7 +39,7 @@ SNCI_DDL = """
 
 def psql(dbname, sql):
     env = {**os.environ, "PGPASSWORD": config("DB_PASSWORD")}
-    command = ["psql", "-h", config("DB_HOST"), "-U", config("DB_USER"), "-d", dbname,
+    command = ["psql", "-h", config("DB_HOST"), "-p", config("DB_PORT", default="5432"), "-U", config("DB_USER"), "-d", dbname,
                "-At", "-v", "ON_ERROR_STOP=1", "-c", sql]
     return subprocess.run(command, check=True, env=env, capture_output=True, text=True).stdout.strip()
 

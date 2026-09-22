@@ -36,6 +36,7 @@ def run_query(sql):
     command = [
         "psql",
         "-h", config("DB_HOST"),
+        "-p", config("DB_PORT", default="5432"),
         "-U", config("DB_USER"),
         "-d", config("DB_NAME"),
         "-At",  # saída sem cabeçalho/alinhamento: 'col1|col2|...'

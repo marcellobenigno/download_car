@@ -94,6 +94,7 @@ Certifique-se de ter os seguintes softwares instalados e configurados em seu amb
    Edite o arquivo `.env` com as seguintes informações:
    ```ini
    DB_HOST=seu_host_do_banco
+   DB_PORT=5432
    DB_USER=seu_usuario_do_banco
    DB_NAME=seu_nome_do_banco
    DB_PASSWORD=sua_senha_do_banco

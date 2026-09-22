@@ -61,6 +61,7 @@ class TestLoadSqlData:
         assert "--single-transaction" in command
         assert command[command.index("-v") + 1] == "ON_ERROR_STOP=1"
         assert command[command.index("-h") + 1] == "db.test"
+        assert command[command.index("-p") + 1] == "54329"
         assert call["env"]["PGPASSWORD"] == "secret"
         assert call["check"] is True
 
@@ -71,6 +72,15 @@ class TestLoadSqlData:
             ("-f", "/tmp/SNCI_PB.sql"),
             ("-c", build_timestamps_query(["2513703"], "maps_incrasnci", "municipio")),
         ]
+
+    def test_port_defaults_to_5432(self, run_calls, monkeypatch):
+        monkeypatch.delenv("DB_PORT")
+        monkeypatch.setattr(load_sql_data, "config", lambda name, default=None: {
+            "DB_HOST": "db.test", "DB_USER": "tester", "DB_NAME": "testdb", "DB_PASSWORD": "secret",
+        }.get(name, default))
+        load_sql_data.load_sql_data("PB", "/tmp/PB.sql", ["2513703"])
+        command = run_calls[0]["command"]
+        assert command[command.index("-p") + 1] == "5432"
 
     def test_car_does_not_touch_timestamps(self, run_calls):
         assert load_sql_data.load_sql_data("PB", "/tmp/PB.sql", ["2513703"]) is True

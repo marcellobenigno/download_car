@@ -12,6 +12,7 @@ def db_env(monkeypatch):
     """Credenciais fictícias do banco (variáveis de ambiente têm precedência sobre o .env)."""
     for name, value in {
         "DB_HOST": "db.test",
+        "DB_PORT": "54329",
         "DB_USER": "tester",
         "DB_NAME": "testdb",
         "DB_PASSWORD": "secret",
