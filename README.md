@@ -19,6 +19,9 @@ SIG-ITR).
 ├── export_sql.py           # Lógica para exportar Shapefiles para SQL
 ├── load_sql_data.py        # Lógica para carregar dados SQL no PostgreSQL/PostGIS
 ├── process_car.py          # Lógica para processamento e limpeza de Shapefiles
+├── aptidao.py               # Script para processamento de dados de aptidão agrícola por município
+├── municipios_aptidao.txt   # Lista de códigos IBGE de município usada por aptidao.py
+├── tests/                   # Testes unitários (pytest)
 ├── requirements.txt        # Dependências do Python
 ├── .env-sample             # Exemplo de arquivo de variáveis de ambiente
 └── temp/
@@ -91,9 +94,11 @@ Certifique-se de ter os seguintes softwares instalados e configurados em seu amb
    DB_USER=seu_usuario_do_banco
    DB_NAME=seu_nome_do_banco
    DB_PASSWORD=sua_senha_do_banco
+   DB_TABLE=maps_car
    ```
    Certifique-se de que o usuário do banco de dados tem permissões adequadas para criar tabelas e inserir/deletar dados
-   na base de dados especificada.
+   na base de dados especificada. `DB_TABLE` é opcional (padrão: `maps_car`) e define a tabela de destino usada por
+   `export_sql.py` e `load_sql_data.py`.
 
 ## Como Usar
 
@@ -199,6 +204,16 @@ Executando DELETE para o estado SP...
 ✅ Registros antigos de SP excluídos com sucesso (ou nenhum encontrado para a condição).
 Inserindo dados via psql para o estado: SP a partir de temp/sql/SP.sql
 ✅ Dados inseridos via psql para o estado: SP
+```
+
+## Testes
+
+O projeto possui testes unitários (pytest) para as funções puras de processamento em `process_car.py`. Para
+executá-los:
+
+```bash
+pip install pytest  # já incluído em requirements.txt
+pytest tests/ -v
 ```
 
 ## Contribuição

@@ -3,8 +3,21 @@ import subprocess
 
 from decouple import config
 
+VALID_UFS = {
+    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
+    "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
+    "SP", "SE", "TO",
+}
+
+DB_TABLE = config("DB_TABLE", default="maps_car")
+
 
 def load_sql_data(state, sql_path):
+    state = state.upper()
+    if state not in VALID_UFS:
+        print(f"❌ Sigla de estado inválida: {state}")
+        return False
+
     HOST = config("DB_HOST")
     USER = config("DB_USER")
     DATABASE = config("DB_NAME")
@@ -14,8 +27,8 @@ def load_sql_data(state, sql_path):
         env = os.environ.copy()
         env['PGPASSWORD'] = DB_PASSWORD
 
-        # Comando DELETE
-        sql_query = f"DELETE FROM maps_car WHERE cod_estado = '{state.upper()}' OR cod_imovel LIKE '{state.upper()}-%'"
+        # Comando DELETE (state já validado contra a whitelist VALID_UFS acima)
+        sql_query = f"DELETE FROM {DB_TABLE} WHERE cod_estado = '{state}' OR cod_imovel LIKE '{state}-%'"
         delete_command = [
             'psql',
             '-h', HOST,
@@ -24,9 +37,9 @@ def load_sql_data(state, sql_path):
             '-c', sql_query
         ]
         # Passa o dicionário 'env' para o subprocess.run()
-        print(f"Executando DELETE para o estado {state.upper()}...")
+        print(f"Executando DELETE para o estado {state}...")
         subprocess.run(delete_command, check=True, env=env)
-        print(f"✅ Registros antigos de {state.upper()} excluídos com sucesso (ou nenhum encontrado para a condição).")
+        print(f"✅ Registros antigos de {state} excluídos com sucesso (ou nenhum encontrado para a condição).")
 
         # Comando de inserção (LOAD)
         command = [
@@ -42,6 +55,7 @@ def load_sql_data(state, sql_path):
         subprocess.run(command, check=True, env=env)
 
         print(f"✅ Dados inseridos via psql para o estado: {state}")
+        return True
 
     except subprocess.CalledProcessError as e:
         # Captura erros específicos do subprocess.run, incluindo a saída do psql
@@ -50,8 +64,11 @@ def load_sql_data(state, sql_path):
             print(f"Stdout: {e.stdout.decode().strip()}")
         if e.stderr:
             print(f"Stderr: {e.stderr.decode().strip()}")
+        return False
     except FileNotFoundError:
         print(
             "❌ Erro: O comando 'psql' não foi encontrado. Certifique-se de que o PostgreSQL está instalado e no seu PATH.")
+        return False
     except Exception as e:
         print(f"❌ Ocorreu um erro inesperado ao inserir dados via psql para o estado {state}: {e}")
+        return False

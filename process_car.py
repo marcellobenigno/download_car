@@ -68,6 +68,9 @@ def process_shapefile(zip_file, output_file, output_crs=4326):
 
         # Extrai códigos IBGE
         car["cod_ibge_m"] = car["cod_imovel"].apply(extract_cod_ibge_m)
+        missing_ibge = int(car["cod_ibge_m"].isnull().sum())
+        if missing_ibge:
+            print(f"⚠️ Atenção: {missing_ibge} registro(s) sem cod_ibge_m extraído de cod_imovel")
         car["cod_ibge_e"] = car["cod_ibge_m"].apply(extract_cod_ibge_e)
 
         # Corrige geometrias
@@ -80,6 +83,8 @@ def process_shapefile(zip_file, output_file, output_crs=4326):
         car.to_file(output_file, driver="ESRI Shapefile")
 
         print(f"✅ Processamento concluído com sucesso para {output_file}!")
+        return True
 
     except Exception as e:
         print(f"❌ Erro ao processar o shapefile: {e}")
+        return False

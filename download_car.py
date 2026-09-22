@@ -1,4 +1,5 @@
 import os
+import zipfile
 from datetime import datetime
 
 from SICAR import Sicar, Polygon
@@ -23,12 +24,19 @@ def get_dated_filename(state, temp_path):
 
 def download_car(state, dated_zip_path):
     if os.path.exists(dated_zip_path):
-        print(f"✅ Arquivo já existe: {dated_zip_path}")
-        return dated_zip_path
+        if zipfile.is_zipfile(dated_zip_path):
+            print(f"✅ Arquivo já existe: {dated_zip_path}")
+            return dated_zip_path
+        print(f"⚠️ Arquivo existente está corrompido, baixando novamente: {dated_zip_path}")
+        os.remove(dated_zip_path)
 
     car = Sicar()
     try:
         downloaded_file = car.download_state(state, Polygon.AREA_PROPERTY)
+        if not zipfile.is_zipfile(downloaded_file):
+            print(f"❌ Download corrompido para o estado {state}")
+            os.remove(downloaded_file)
+            return None
         os.rename(downloaded_file, dated_zip_path)
         print(f"⬇️ Download executado e renomeado para: {dated_zip_path}")
         return dated_zip_path

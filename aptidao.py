@@ -3,11 +3,22 @@ Script para processar dados de aptidão agrícola
 Realiza clip de geometrias com grade, análise espacial e exportação de dados
 """
 
+import argparse
+import gc  # Importa o módulo garbage collector para gerenciamento de memória
+import os
+import re
+
 import geopandas as gpd
 from decouple import config
 from sqlalchemy import create_engine
-import os
-import gc # Importa o módulo garbage collector para gerenciamento de memória
+
+IBGE_CODE_RE = re.compile(r"^\d{7}$")
+
+
+def _validate_cod_ibge_m(cod_ibge_m):
+    """Valida o código IBGE de município antes de usá-lo em SQL (evita SQL injection)."""
+    if not IBGE_CODE_RE.match(str(cod_ibge_m)):
+        raise ValueError(f"Código IBGE de município inválido: {cod_ibge_m}")
 
 # =============================================================================
 # CONFIGURAÇÕES E CONEXÃO COM BANCO DE DADOS
@@ -38,6 +49,7 @@ def get_aptidao_data(engine, cod_ibge_m):
     Returns:
         GeoDataFrame com dados de aptidão.
     """
+    _validate_cod_ibge_m(cod_ibge_m)
     sql_aptidao = f"""
         SELECT descricao, val, cor, 
                cod_ibge_m, cod_ibge_e, ano, 
@@ -59,6 +71,7 @@ def get_grade_data(engine, cod_ibge_m):
     Returns:
         GeoDataFrame com dados da grade.
     """
+    _validate_cod_ibge_m(cod_ibge_m)
     sql_grade = f"""
         SELECT DISTINCT id AS grade_id, geom 
         FROM maps_grade10000
@@ -214,30 +227,34 @@ def process_municipality(cod_ibge_m, output_base_path):
 # EXECUÇÃO DO SCRIPT PARA A LISTA DE MUNICÍPIOS
 # =============================================================================
 
-if __name__ == '__main__':
-    # Lista de códigos IBGE fornecida
-    cod_ibge_m_list = [
-        '1100049','1100189','1100296','1100304','1100502','1100940','1101492',
-        '1503044','1506708','3116902','3130507','3137536','3142809','3150703',
-        '3306305','3515202','3515301','3520103','3522307','3522604','3534708',
-        '3537909','3541406','3542602','3548005','3554300','4100707','4105409',
-        '4106001','4107520','4108809','4111001','4113205','4113403','4113734',
-        '4117107','4117453','4123907','4125100','4126504','4127957','4300554',
-        '4302154','4304358','4304663','4305108','4308458','4309050','4312617',
-        '4313706','4314175','4317707','4322004','5001102','5002902','5002951',
-        '5003256','5005202','5005707','5007406','5007695','5007935','5101258',
-        '5101704','5101803','5101852','5102504','5102637','5102702','5103106',
-        '5103361','5103437','5103809','5103908','5103957','5104500','5105200',
-        '5105234','5105903','5106000','5106182','5106828','5107107','5107156',
-        '5107206','5107578','5107750','5107792','5107800','5107875','5107958',
-        '5108352','5201454','5201504','5203807','5204201','5204508','5204854',
-        '5205471','5211909','5212501','5212907','5213087','5214838','5215207',
-        '5219407'
-    ]
+def load_municipality_codes(path):
+    """Lê códigos IBGE de município de um arquivo texto, um código por linha."""
+    with open(path, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]
 
-    # Diretório de saída
-    OUTPUT_PATH = '/Users/marcellodebarrosfilho/Downloads/aptidao_clip'
-    
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Processa dados de aptidão agrícola (clip com grade) para uma lista de municípios."
+    )
+    parser.add_argument(
+        "--codigos", "-c",
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "municipios_aptidao.txt"),
+        help="Arquivo com códigos IBGE de municípios, um por linha (padrão: municipios_aptidao.txt)."
+    )
+    parser.add_argument(
+        "--saida", "-o",
+        default=os.path.join(os.getcwd(), "temp", "aptidao"),
+        help="Diretório de saída para os Shapefiles gerados (padrão: ./temp/aptidao)."
+    )
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    cod_ibge_m_list = load_municipality_codes(args.codigos)
+    OUTPUT_PATH = args.saida
+
     # Loop de processamento
     for cod_ibge in cod_ibge_m_list:
         process_municipality(cod_ibge, OUTPUT_PATH)

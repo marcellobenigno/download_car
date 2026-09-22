@@ -1,5 +1,9 @@
 import subprocess
 
+from decouple import config
+
+DB_TABLE = config("DB_TABLE", default="maps_car")
+
 
 def export_sql(shapefile, output_sql):
     command = [
@@ -8,14 +12,17 @@ def export_sql(shapefile, output_sql):
         "-s", "4326",
         "-t", "2D",
         shapefile,
-        "maps_car"
+        DB_TABLE
     ]
 
     try:
         with open(output_sql, "w") as sql_file:
             subprocess.run(command, stdout=sql_file, check=True)
         print(f"✅ Arquivo SQL gerado com sucesso: {output_sql}")
+        return True
     except subprocess.CalledProcessError as e:
         print(f"❌ Erro ao executar shp2pgsql: {e}")
+        return False
     except Exception as e:
         print(f"❌ Erro inesperado: {e}")
+        return False
