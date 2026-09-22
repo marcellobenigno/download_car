@@ -1,6 +1,6 @@
 import os
+import time
 import zipfile
-from datetime import datetime
 
 from SICAR import Sicar, Polygon
 
@@ -16,19 +16,22 @@ def create_directories(base_path):
     return sql_dir, shapefile_dir, zip_dir
 
 
-def get_dated_filename(state, temp_path):
-    today = datetime.today().strftime("%d%m%Y")
-    filename = f"{state}_AREA_IMOVEL_{today}.zip"
-    return os.path.join(temp_path, filename)
+# Os arquivos de UF inteira são reaproveitados por alguns dias em vez de baixados a cada execução.
+CACHE_VALIDADE_SEGUNDOS = 2 * 24 * 60 * 60
 
 
-def download_car(state, dated_zip_path):
-    if os.path.exists(dated_zip_path):
-        if zipfile.is_zipfile(dated_zip_path):
-            print(f"✅ Arquivo já existe: {dated_zip_path}")
-            return dated_zip_path
-        print(f"⚠️ Arquivo existente está corrompido, baixando novamente: {dated_zip_path}")
-        os.remove(dated_zip_path)
+def get_car_zip_path(state, temp_path):
+    return os.path.join(temp_path, f"{state}_AREA_IMOVEL.zip")
+
+
+def download_car(state, zip_path):
+    if os.path.exists(zip_path):
+        idade = time.time() - os.path.getmtime(zip_path)
+        if idade <= CACHE_VALIDADE_SEGUNDOS and zipfile.is_zipfile(zip_path):
+            print(f"✅ Arquivo já existe: {zip_path} (baixado há {int(idade // 3600)}h, validade de 2 dias)")
+            return zip_path
+        print(f"⚠️ Arquivo em cache desatualizado ou corrompido, baixando novamente: {zip_path}")
+        os.remove(zip_path)
 
     car = Sicar()
     try:
@@ -37,9 +40,9 @@ def download_car(state, dated_zip_path):
             print(f"❌ Download corrompido para o estado {state}")
             os.remove(downloaded_file)
             return None
-        os.rename(downloaded_file, dated_zip_path)
-        print(f"⬇️ Download executado e renomeado para: {dated_zip_path}")
-        return dated_zip_path
+        os.replace(downloaded_file, zip_path)
+        print(f"⬇️ Download executado e renomeado para: {zip_path}")
+        return zip_path
     except Exception as e:
         print(f"❌ Erro no download do arquivo: {e}")
         return None

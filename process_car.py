@@ -48,7 +48,11 @@ COLUMN_RENAME = {
 }
 
 
-def process_shapefile(zip_file, output_file, output_crs=4326):
+def read_car_shapefile(zip_file, output_crs=4326, municipios=None):
+    """
+    Lê e limpa o shapefile do CAR. Se `municipios` for informado, mantém apenas esses códigos IBGE.
+    Retorna o GeoDataFrame processado, ou None em caso de erro.
+    """
     try:
         print(f"🔄 Lendo o arquivo: {zip_file}")
         car = gpd.read_file(zip_file)
@@ -73,18 +77,24 @@ def process_shapefile(zip_file, output_file, output_crs=4326):
             print(f"⚠️ Atenção: {missing_ibge} registro(s) sem cod_ibge_m extraído de cod_imovel")
         car["cod_ibge_e"] = car["cod_ibge_m"].apply(extract_cod_ibge_e)
 
+        # Filtra pelos municípios informados
+        if municipios is not None:
+            car = car[car["cod_ibge_m"].isin(municipios)].copy()
+            print(f"🔎 {len(car)} registro(s) pertencem aos {len(municipios)} município(s) selecionado(s)")
+
         # Corrige geometrias
         car["geom"] = car["geom"].apply(clean_geometry)
         car["geom"] = car["geom"].apply(ensure_polygon)
         car = car[car["geom"].notnull()]
         car = car.drop_duplicates(subset=["cod_imovel"], keep="first")
-
-        print(f"💾 Salvando Shapefile em: {output_file}")
-        car.to_file(output_file, driver="ESRI Shapefile")
-
-        print(f"✅ Processamento concluído com sucesso para {output_file}!")
-        return True
+        return car
 
     except Exception as e:
         print(f"❌ Erro ao processar o shapefile: {e}")
-        return False
+        return None
+
+
+def save_shapefile(car, output_file):
+    print(f"💾 Salvando Shapefile em: {output_file}")
+    car.to_file(output_file, driver="ESRI Shapefile")
+    print(f"✅ Processamento concluído com sucesso para {output_file}!")

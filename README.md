@@ -3,7 +3,7 @@
 ## Descrição do Projeto
 
 Este projeto Python foi desenvolvido para automatizar o processo de download, processamento e exportação de dados do
-Sistema Nacional de Cadastro Ambiental Rural (SICAR). Ele é capaz de baixar arquivos Shapefile por estado, realizar a
+Sistema Nacional de Cadastro Ambiental Rural (SICAR) e das bases de certificação de imóveis do INCRA (SIGEF e SNCI). Ele é capaz de baixar arquivos Shapefile por estado, realizar a
 limpeza e conversão dos dados geográficos e atributos, e exportá-los em formato SQL otimizado para inserção em bancos de
 dados PostgreSQL/PostGIS, especificamente para o Sistema de Informações Geográficas do Imposto Territorial Rural (
 SIG-ITR).
@@ -19,6 +19,9 @@ SIG-ITR).
 ├── export_sql.py           # Lógica para exportar Shapefiles para SQL
 ├── load_sql_data.py        # Lógica para carregar dados SQL no PostgreSQL/PostGIS
 ├── process_car.py          # Lógica para processamento e limpeza de Shapefiles
+├── download_incra.py       # Download dos shapefiles SIGEF/SNCI do INCRA por UF
+├── process_incra.py        # Processamento dos shapefiles SIGEF/SNCI (interseção com municípios)
+├── municipios.py           # Consulta os municípios com prefeitura ativa, suas geometrias e contagens
 ├── aptidao.py               # Script para processamento de dados de aptidão agrícola por município
 ├── municipios_aptidao.txt   # Lista de códigos IBGE de município usada por aptidao.py
 ├── tests/                   # Testes unitários (pytest)
@@ -95,120 +98,128 @@ Certifique-se de ter os seguintes softwares instalados e configurados em seu amb
    DB_NAME=seu_nome_do_banco
    DB_PASSWORD=sua_senha_do_banco
    DB_TABLE=maps_car
+   DB_TABLE_SIGEF=maps_incrasigef
+   DB_TABLE_SNCI=maps_incrasnci
    ```
    Certifique-se de que o usuário do banco de dados tem permissões adequadas para criar tabelas e inserir/deletar dados
-   na base de dados especificada. `DB_TABLE` é opcional (padrão: `maps_car`) e define a tabela de destino usada por
-   `export_sql.py` e `load_sql_data.py`.
+   na base de dados especificada. `DB_TABLE`, `DB_TABLE_SIGEF` e `DB_TABLE_SNCI` são opcionais e definem as tabelas de
+   destino (padrões: `maps_car`, `maps_incrasigef` e `maps_incrasnci`).
 
 ## Como Usar
 
-O projeto pode ser executado de duas formas principais: interativamente ou via linha de comando, permitindo o download e
-processamento de dados para um ou múltiplos estados.
+A atualização é feita apenas nos **municípios com prefeitura ativa**, obtidos do próprio banco de destino:
 
-### Execução Interativa (para um ou múltiplos estados)
+```sql
+SELECT m.*
+FROM maps_municipio m
+INNER JOIN prefeitura_prefeitura p ON p.municipio_id = m.id
+WHERE p.ativo = TRUE;
+```
 
-Para iniciar o pipeline completo de download, processamento e exportação de forma interativa, execute o
-script `main.py`:
+Os estados processados são os que possuem ao menos um desses municípios. Os demais municípios não são alterados nas
+tabelas de destino.
+
+### Bases disponíveis
+
+| Fonte   | Origem                                          | Tabela (variável / padrão)                 | Como o município é identificado              |
+|---------|-------------------------------------------------|--------------------------------------------|----------------------------------------------|
+| `car`   | SICAR (biblioteca `SICAR`)                      | `DB_TABLE` / `maps_car`                    | código IBGE extraído de `cod_imovel`         |
+| `sigef` | `certificacao.incra.gov.br/csv_shp/zip/`        | `DB_TABLE_SIGEF` / `maps_incrasigef`       | interseção com `maps_geometriamunicipio`     |
+| `snci`  | `certificacao.incra.gov.br/csv_shp/zip/`        | `DB_TABLE_SNCI` / `maps_incrasnci`         | interseção com `maps_geometriamunicipio`     |
+
+O INCRA só publica o shapefile da UF inteira, sem código de município confiável. Por isso, cada imóvel do SIGEF/SNCI é
+gravado para cada município com prefeitura ativa cuja geometria ele intersecta (um imóvel na divisa aparece nos dois
+municípios). Municípios com prefeitura ativa sem geometria cadastrada são ignorados no SIGEF/SNCI.
+
+### Exemplos
 
 ```bash
-python main.py
+python main.py                              # CAR de todos os estados com prefeitura ativa
+python main.py --fonte car sigef snci       # as três bases
+python main.py MT,SP --fonte sigef snci     # SIGEF e SNCI apenas de MT e SP
 ```
 
-O script solicitará que você digite as siglas dos estados desejados, separadas por vírgula (ex: `AC, SP, MG`).
-
-```
-Digite a sigla dos estados separados por vírgula (ex: AC, SP, MG): AC, SP
-```
-
-### Execução via Linha de Comando (para um ou múltiplos estados)
-
-Você pode passar as siglas dos estados diretamente como um argumento para o script `main.py`:
-
-```bash
-python main.py AC,SP,RJ
-```
-
-Neste exemplo, o script processará os dados para os estados do Acre (AC), São Paulo (SP) e Rio de Janeiro (RJ)
-sequencialmente.
+Sem `--fonte`, apenas o CAR é atualizado. O argumento de estados é opcional (estados sem prefeitura ativa são ignorados).
 
 ### Fluxo de Execução do Pipeline
 
-Ao executar `main.py`, o script seguirá as seguintes etapas para cada estado especificado:
+Ao executar `main.py`, o script consulta os municípios com prefeitura ativa e segue as seguintes etapas para cada fonte
+e estado:
 
-1. **Criação de Diretórios**: Garante que os diretórios `temp/sql/`, `temp/shapefile/` e `temp/zip/` existam para
-   armazenar os arquivos intermediários.
-2. **Download do Shapefile**: Baixa o arquivo ZIP do SICAR para o estado atual, salvando-o em `temp/zip/`.
-3. **Descompactação**: O arquivo ZIP é descompactado em um diretório temporário dentro de `temp/unzipped/`.
-4. **Processamento do Shapefile**: O arquivo `.shp` descompactado é lido, limpo (geometrias inválidas são corrigidas,
-   colunas são padronizadas) e salvo em `temp/shapefile/`.
-5. **Exportação para SQL**: O Shapefile processado é convertido para um arquivo `.sql` usando `shp2pgsql`, que é salvo
-   em `temp/sql/`.
-6. **Carregamento no Banco de Dados**: Os dados do arquivo `.sql` são carregados no banco de dados PostgreSQL/PostGIS.
-   Antes da inserção, os registros antigos correspondentes ao estado são removidos para evitar duplicidade e garantir a
-   atualização dos dados.
+1. **Download**: Baixa o ZIP da UF para `temp/zip/`. O arquivo é reaproveitado por até **2 dias**; depois disso (ou se
+   estiver corrompido) é baixado novamente. Downloads do INCRA são tentados até 3 vezes.
+2. **Processamento**: O shapefile é lido, reprojetado para EPSG:4326, as geometrias são corrigidas (2D, inválidas
+   reparadas com `buffer(0)`, convertidas para MultiPolygon) e os registros são filtrados para os municípios com
+   prefeitura ativa.
+3. **Comparação**: Para cada município, a quantidade de registros baixados é comparada com a quantidade já existente na
+   tabela. **Se forem iguais, o município é considerado atualizado e não é regravado.** Se todos os municípios da UF
+   estiverem atualizados, as etapas seguintes são puladas.
+4. **Exportação para SQL**: Os registros dos municípios a atualizar são salvos em `temp/shapefile/` e convertidos para
+   `temp/sql/` com `shp2pgsql`.
+5. **Carregamento no Banco de Dados**: Numa **única transação**, os registros antigos desses municípios são removidos e
+   os novos inseridos (no SIGEF/SNCI, `criado`/`modificado` são preenchidos). Se qualquer comando falhar, nada é
+   alterado.
 
 ## Estrutura do Código e Módulos
 
 O projeto é modularizado para facilitar a compreensão e manutenção:
 
-- `main.py`: O script principal que orquestra o fluxo de trabalho, chamando as funções dos outros módulos em sequência.
-- `download_car.py`: Contém funções para criar a estrutura de diretórios necessária e realizar o download dos Shapefiles
-  do SICAR. Utiliza a biblioteca `SICAR` para interagir com a API do SICAR.
+- `main.py`: Orquestra o fluxo: consulta os municípios com prefeitura ativa e, para cada fonte e estado, chama
+  `update_car` ou `update_incra`. `select_outdated` compara as contagens da fonte e da base por município.
+- `download_car.py`: Cria a estrutura de diretórios e baixa os Shapefiles do SICAR (biblioteca `SICAR`).
     - `create_directories(base_path)`: Cria os diretórios `sql`, `shapefile` e `zip`.
-    - `get_dated_filename(state, temp_path)`: Gera um nome de arquivo único com base na data para o ZIP baixado.
-    - `download_car(state, dated_zip_path)`: Realiza o download do Shapefile para o estado especificado.
-- `process_car.py`: Responsável pelo processamento e limpeza dos dados do Shapefile.
-    - `extract_cod_ibge_m(cod_imovel)`: Extrai o código IBGE do município.
-    - `extract_cod_ibge_e(cod_ibge_m)`: Extrai o código IBGE do estado.
-    - `clean_geometry(geom)`: Limpa e valida geometrias.
-    - `ensure_polygon(geom)`: Garante que a geometria seja um polígono.
-    - `process_shapefile(zip_file, output_file, output_crs=4326)`: Função principal de processamento, lendo, limpando e
-      salvando o Shapefile.
-- `export_sql.py`: Lida com a conversão do Shapefile processado para um arquivo SQL.
-    - `export_sql(shapefile, output_sql)`: Executa o comando `shp2pgsql` para gerar o arquivo SQL.
-- `load_sql_data.py`: Gerencia a inserção dos dados SQL no banco de dados PostgreSQL/PostGIS.
-    - `load_sql_data(state, sql_path)`: Conecta-se ao banco de dados e executa comandos `DELETE` (para registros
-      antigos) e `INSERT` (para novos dados) usando `psql`.
+    - `get_car_zip_path(state, temp_path)`: Caminho do ZIP da UF em cache.
+    - `download_car(state, zip_path)`: Baixa o Shapefile da UF, reaproveitando o cache de até 2 dias.
+- `download_incra.py`: Baixa os Shapefiles SIGEF/SNCI da UF do INCRA.
+    - `download_incra(fonte, uf, zip_dir)`: Baixa o ZIP (com cache de 2 dias e até 3 tentativas).
+- `process_car.py`: Processamento e limpeza do Shapefile do CAR.
+    - `extract_cod_ibge_m(cod_imovel)` / `extract_cod_ibge_e(cod_ibge_m)`: Extraem os códigos IBGE.
+    - `clean_geometry(geom)` / `ensure_polygon(geom)`: Limpam e validam geometrias.
+    - `read_car_shapefile(zip_file, output_crs=4326, municipios=None)`: Lê, filtra pelos municípios e limpa o Shapefile.
+    - `save_shapefile(car, output_file)`: Salva o resultado.
+- `process_incra.py`: Processamento dos Shapefiles SIGEF/SNCI.
+    - `process_incra_shapefile(zip_path, fonte, municipios_gdf)`: Lê a área dos municípios, corrige geometrias,
+      normaliza os campos e atribui cada imóvel aos municípios que ele intersecta.
+- `export_sql.py`: `export_sql(shapefile, output_sql, table)` executa o `shp2pgsql` para gerar o arquivo SQL.
+- `load_sql_data.py`: `load_sql_data(state, sql_path, municipios, table, column, timestamps)` remove os registros dos
+  municípios informados e insere os novos numa única transação, usando `psql`.
+- `municipios.py`: Consultas ao banco de destino.
+    - `get_active_municipalities()`: Códigos IBGE dos municípios com prefeitura ativa, agrupados por UF.
+    - `get_active_municipality_geometries()`: Geometrias desses municípios (`maps_geometriamunicipio`).
+    - `count_records_by_municipality(table, column, municipios)`: Quantidade atual de registros por município.
 
 ## Exemplos de Saída
 
-### Execução para Múltiplos Estados
-
 ```
-Digite a sigla dos estados separados por vírgula (ex: AC, SP, MG): AC, SP
+$ python main.py PB,RO --fonte car sigef
+4 município(s) com prefeitura ativa em 2 estado(s): PB, RO
 
->>> Processando estado: AC
-✅ Arquivo já existe: temp/zip/AC_AREA_IMOVEL_22072025.zip
-Arquivo baixado e salvo em: temp/zip/AC_AREA_IMOVEL_22072025.zip
-Arquivo descompactado em: temp/unzipped/AC
-🔄 Lendo o arquivo: temp/unzipped/AC/CAR_AC.shp
-💾 Salvando Shapefile em: temp/shapefile/AC.shp
-✅ Processamento concluído com sucesso para temp/shapefile/AC.shp!
-✅ Arquivo SQL gerado com sucesso: temp/sql/AC.sql
-Executando DELETE para o estado AC...
-✅ Registros antigos de AC excluídos com sucesso (ou nenhum encontrado para a condição).
-Inserindo dados via psql para o estado: AC a partir de temp/sql/AC.sql
-✅ Dados inseridos via psql para o estado: AC
+>>> CAR - estado: PB (3 município(s) com prefeitura ativa)
+✅ Arquivo já existe: temp/zip/PB_AREA_IMOVEL.zip (baixado há 0h, validade de 2 dias)
+Arquivo descompactado em: temp/unzipped/PB
+🔄 Lendo o arquivo: temp/unzipped/PB/AREA_IMOVEL_1.shp
+🔎 2803 registro(s) pertencem aos 3 município(s) selecionado(s)
+   2501104: 1525 imóvel(is), mesma quantidade da fonte. Nenhuma atualização necessária.
+   2507507: 240 imóvel(is), mesma quantidade da fonte. Nenhuma atualização necessária.
+   2513703: 1038 imóvel(is), mesma quantidade da fonte. Nenhuma atualização necessária.
+✅ CAR de PB já está atualizado.
 
->>> Processando estado: SP
-📥 Baixando dados para: SP
-Downloading polygon 'AREA_IMOVEL' for state 'SP': 100%|██████████| 14.4M/14.4M [00:02<00:00, 5.17MiB/s]
-⬇️ Download executado e renomeado para: temp/zip/SP_AREA_IMOVEL_22072025.zip
-Arquivo baixado e salvo em: temp/zip/SP_AREA_IMOVEL_22072025.zip
-Arquivo descompactado em: temp/unzipped/SP
-🔄 Lendo o arquivo: temp/unzipped/SP/CAR_SP.shp
-💾 Salvando Shapefile em: temp/shapefile/SP.shp
-✅ Processamento concluído com sucesso para temp/shapefile/SP.shp!
-✅ Arquivo SQL gerado com sucesso: temp/sql/SP.sql
-Executando DELETE para o estado SP...
-✅ Registros antigos de SP excluídos com sucesso (ou nenhum encontrado para a condição).
-Inserindo dados via psql para o estado: SP a partir de temp/sql/SP.sql
-✅ Dados inseridos via psql para o estado: SP
+>>> SIGEF - estado: RO (1 município(s) com prefeitura ativa)
+📥 Baixando SIGEF de RO: https://certificacao.incra.gov.br/csv_shp/zip/Sigef%20Brasil_RO.zip
+⬇️ Download concluído: temp/zip/SIGEF_RO.zip
+🔄 Lendo o arquivo: temp/zip/SIGEF_RO.zip
+   4056 registro(s) na área dos municípios selecionados
+🔎 1345 registro(s) intersectam os 1 município(s) selecionado(s)
+   1100304: 1335 imóvel(is) na base, 1345 na fonte. Será atualizado.
+💾 Salvando Shapefile em: temp/shapefile/SIGEF_RO.shp
+✅ Arquivo SQL gerado com sucesso: temp/sql/SIGEF_RO.sql
+Substituindo registros de 1 município(s) de RO em maps_incrasigef a partir de temp/sql/SIGEF_RO.sql...
+✅ Dados de RO atualizados em maps_incrasigef
 ```
 
 ## Testes
 
-O projeto possui testes unitários (pytest) para as funções puras de processamento em `process_car.py`. Para
+O projeto possui testes unitários (pytest) para as funções puras de processamento e montagem de SQL. Para
 executá-los:
 
 ```bash

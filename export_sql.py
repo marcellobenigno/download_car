@@ -5,14 +5,15 @@ from decouple import config
 DB_TABLE = config("DB_TABLE", default="maps_car")
 
 
-def export_sql(shapefile, output_sql):
+def export_sql(shapefile, output_sql, table=DB_TABLE):
     command = [
         "shp2pgsql",
         "-a",
+        "-e",  # sem BEGIN/COMMIT próprios: load_sql_data executa DELETE + INSERT numa única transação
         "-s", "4326",
         "-t", "2D",
         shapefile,
-        DB_TABLE
+        table
     ]
 
     try:
