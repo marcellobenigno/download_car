@@ -1,3 +1,4 @@
+import pytest
 from shapely.geometry import LineString, MultiLineString, Polygon
 
 from process_car import (
@@ -56,3 +57,54 @@ class TestEnsurePolygon:
         poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
         result = ensure_polygon(poly)
         assert result.geom_type == "Polygon"
+
+
+import geopandas as gpd  # noqa: E402
+from shapely.geometry import box  # noqa: E402
+
+from process_car import read_car_shapefile  # noqa: E402
+
+
+class TestReadCarShapefile:
+    @pytest.fixture
+    def car_zip(self, zip_shapefile):
+        gdf = gpd.GeoDataFrame({
+            "cod_imovel": [
+                "PB-2513703-AAA",
+                "PB-2513703-AAA",  # duplicado
+                "PB-2501104-BBB",
+                "PB-2599999-CCC",  # município fora da lista
+                "SEM-CODIGO",
+            ],
+            "municipio": ["Sousa", "Sousa", "Areia", "Outro", "?"],
+            "ind_status": ["AT"] * 5,
+        }, geometry=[box(i, 0, i + 1, 1) for i in range(5)], crs=4674)
+        return zip_shapefile(gdf, "AREA_IMOVEL_1")
+
+    def test_filters_municipalities_renames_and_deduplicates(self, car_zip):
+        result = read_car_shapefile(car_zip, municipios=["2513703", "2501104"])
+
+        assert sorted(result["cod_imovel"]) == ["PB-2501104-BBB", "PB-2513703-AAA"]
+        assert set(result["cod_ibge_e"]) == {"25"}
+        assert {"nom_munici", "situacao"} <= set(result.columns)
+        assert result.crs.to_epsg() == 4326
+
+    def test_without_filter_keeps_all_municipalities(self, car_zip):
+        result = read_car_shapefile(car_zip)
+        assert len(result) == 4  # 5 registros menos 1 duplicado
+
+    def test_returns_none_for_unreadable_file(self, tmp_path):
+        broken = tmp_path / "quebrado.zip"
+        broken.write_bytes(b"isto nao e um zip")
+        assert read_car_shapefile(str(broken)) is None
+
+    def test_saved_shapefile_keeps_geometry_and_attributes(self, car_zip, tmp_path):
+        from process_car import save_shapefile
+
+        result = read_car_shapefile(car_zip, municipios=["2513703"])
+        output = tmp_path / "PB.shp"
+        save_shapefile(result, str(output))
+
+        saved = gpd.read_file(output)
+        assert list(saved["cod_imovel"]) == ["PB-2513703-AAA"]
+        assert saved.geometry.iloc[0].equals(result.geometry.iloc[0])

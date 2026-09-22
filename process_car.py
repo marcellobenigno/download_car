@@ -68,7 +68,7 @@ def read_car_shapefile(zip_file, output_crs=4326, municipios=None):
             print(f"⚠️ Atenção: colunas ausentes: {', '.join(missing_cols)}")
 
         valid_columns = [col for col in COLUMN_RENAME if col in car.columns]
-        car = car[valid_columns].rename(columns=COLUMN_RENAME)
+        car = car[valid_columns].rename(columns=COLUMN_RENAME).set_geometry("geom")
 
         # Extrai códigos IBGE
         car["cod_ibge_m"] = car["cod_imovel"].apply(extract_cod_ibge_m)

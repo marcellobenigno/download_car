@@ -219,12 +219,20 @@ Substituindo registros de 1 município(s) de RO em maps_incrasigef a partir de t
 
 ## Testes
 
-O projeto possui testes unitários (pytest) para as funções puras de processamento e montagem de SQL. Para
-executá-los:
+Os testes (pytest) cobrem o processamento dos shapefiles (com arquivos sintéticos), o cache e as novas tentativas dos
+downloads, a comparação de contagens por município, a montagem dos comandos `psql` e a orquestração de `main.py`. A
+rede e o banco são simulados, então rodam sem acesso ao SICAR, ao INCRA ou ao PostgreSQL:
 
 ```bash
-pip install pytest  # já incluído em requirements.txt
 pytest tests/ -v
+```
+
+O teste de integração `tests/test_integration_postgis.py` usa um PostgreSQL/PostGIS real: cria um banco temporário,
+exporta com `shp2pgsql`, carrega com `psql` e verifica datas, `criado`/`modificado` e o rollback em caso de erro. Ele é
+ignorado por padrão; para rodar, use credenciais (`.env`) de um usuário que possa criar bancos:
+
+```bash
+TEST_POSTGIS=1 pytest tests/test_integration_postgis.py -v
 ```
 
 ## Contribuição
