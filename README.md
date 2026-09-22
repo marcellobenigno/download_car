@@ -135,7 +135,7 @@ municípios). Municípios com prefeitura ativa sem geometria cadastrada são ign
 
 ```bash
 python main.py                              # CAR de todos os estados com prefeitura ativa
-python main.py --fonte car sigef snci       # as três bases
+python main.py --fonte car,sigef,snci       # as três bases (também aceita separadas por espaço)
 python main.py MT,SP --fonte sigef snci     # SIGEF e SNCI apenas de MT e SP
 ```
 

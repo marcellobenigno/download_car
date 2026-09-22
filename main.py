@@ -181,10 +181,17 @@ def parse_args():
         help="Siglas dos estados separadas por vírgula (ex: MT,SP). Padrão: todos com prefeitura ativa.",
     )
     parser.add_argument(
-        "--fonte", nargs="+", choices=FONTES, default=["car"],
-        help="Bases a atualizar (padrão: car). Ex: --fonte car sigef snci",
+        "--fonte", nargs="+", default=["car"],
+        help="Bases a atualizar: car, sigef, snci (padrão: car). Ex: --fonte car,sigef,snci ou --fonte car sigef snci",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Aceita as bases separadas por espaço e/ou vírgula, como os estados
+    args.fonte = [f.strip().lower() for value in args.fonte for f in value.split(",") if f.strip()]
+    invalid = [f for f in args.fonte if f not in FONTES]
+    if invalid or not args.fonte:
+        parser.error(f"fonte(s) inválida(s): {', '.join(invalid) or '(vazio)'} (use: {', '.join(FONTES)})")
+    return args
 
 
 def main():
